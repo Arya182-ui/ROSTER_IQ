@@ -60,7 +60,8 @@ See the full architecture write-up in [docs/architecture_diagram.md](docs/archit
 ### 1. Install Python dependencies
 
 ```bash
-cd backend && pip install -r requirements.txt
+cd RosterIQ
+pip install -r requirements.txt
 
 ```
 
@@ -123,6 +124,20 @@ During the walkthrough, highlight:
 - Retry effectiveness chart
 
 The full demo narration is in [docs/demo_script.md](docs/demo_script.md).
+
+## Judge-Friendly Endpoints
+
+- `GET /procedures` lists all named procedural workflows.
+- `POST /procedures/{name}/run` executes a specific procedure (optional body: `{ "state": "CA" }`).
+- `GET /memory/status` shows whether episodic memory is currently using Firebase or local JSON fallback.
+
+## Quick Validation
+
+Run smoke tests for judging-critical capabilities:
+
+```bash
+python -m unittest backend.tests.test_judging_readiness
+```
 
 ## Example Screenshots
 

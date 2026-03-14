@@ -20,6 +20,7 @@ import StuckROTable from "../components/StuckROTable";
 
 const initialState = {
   loading: true,
+  focusedLoading: true,
   error: "",
   focusState: APP_CONFIG.defaultState || "CA",
   data: {
@@ -43,17 +44,19 @@ function dashboardReducer(state, action) {
     case "INIT_START":
       return { ...state, loading: true, error: "" };
     case "INIT_SUCCESS":
-      return { ...state, loading: false, data: action.payload };
+      return { ...state, loading: false, focusedLoading: false, data: action.payload };
     case "INIT_FAILURE":
       return { ...state, loading: false, error: action.payload };
     case "SET_FOCUS":
       return { ...state, focusState: action.payload };
+    case "FOCUS_START":
+      return { ...state, focusedLoading: true };
     case "FOCUS_SUCCESS":
-      return { ...state, focusedData: action.payload };
+      return { ...state, focusedLoading: false, focusedData: action.payload };
     case "FOCUS_FAILURE":
       // We don't block the whole dashboard for focused data failures
       console.error(action.payload);
-      return state;
+      return { ...state, focusedLoading: false };
     default:
       return state;
   }
@@ -193,7 +196,7 @@ function DashboardSkeleton() {
 
 export default function DashboardPage({ onOpenChat }) {
   const [state, dispatch] = useReducer(dashboardReducer, initialState);
-  const { loading, error, focusState, data, focusedData } = state;
+  const { loading, focusedLoading, error, focusState, data, focusedData } = state;
 
   useEffect(() => {
     async function loadDashboard() {
@@ -243,6 +246,7 @@ export default function DashboardPage({ onOpenChat }) {
   useEffect(() => {
     async function loadFocused() {
       try {
+        dispatch({ type: "FOCUS_START" });
         const [rootCause, pipelineReport] = await Promise.all([
           getRootCause(focusState),
           getPipelineReport(focusState)
@@ -394,6 +398,12 @@ export default function DashboardPage({ onOpenChat }) {
         ))}
       </section>
 
+      {focusedLoading && (
+        <section className="panel-shell border-cyan-400/20 bg-cyan-500/10 p-4 text-sm text-cyan-100">
+          Updating state-specific root-cause and pipeline report panels for {focusState}...
+        </section>
+      )}
+
       <AnalyticsDashboard
         pipelineHealth={data.pipelineHealth}
         marketTrend={data.marketTrend}
@@ -404,8 +414,24 @@ export default function DashboardPage({ onOpenChat }) {
       />
 
       <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-        <RootCausePanel stateCode={focusState} data={focusedData.rootCause} />
-        <PipelineReportPanel report={focusedData.pipelineReport} focusState={focusState} />
+        {focusedLoading ? (
+          <div className="panel-shell p-6">
+            <SkeletonLine className="h-3 w-44" />
+            <SkeletonLine className="mt-3 h-3 w-64" />
+            <SkeletonBlock className="mt-5 h-56 rounded-3xl" />
+          </div>
+        ) : (
+          <RootCausePanel stateCode={focusState} data={focusedData.rootCause} />
+        )}
+        {focusedLoading ? (
+          <div className="panel-shell p-6">
+            <SkeletonLine className="h-3 w-44" />
+            <SkeletonLine className="mt-3 h-3 w-64" />
+            <SkeletonBlock className="mt-5 h-56 rounded-3xl" />
+          </div>
+        ) : (
+          <PipelineReportPanel report={focusedData.pipelineReport} focusState={focusState} />
+        )}
       </div>
 
       <StuckROTable rows={data.stuckRos} anomalies={data.durationAnomalies} focusState={focusState} />

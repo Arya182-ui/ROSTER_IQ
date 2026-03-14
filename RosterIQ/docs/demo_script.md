@@ -14,11 +14,15 @@ RosterIQ solves that by acting as an AI operations intelligence agent. It analyz
 
 The agent routes that question to the stuck pipeline analytics tool, retrieves the relevant roster operations, and returns a concise explanation. At the same time, the dashboard shows the stuck pipeline table and stage-level health distribution, so the team can immediately see where the bottlenecks are."
 
+Then call `GET /procedures` and `POST /procedures/triage_stuck_ros/run` to show a named procedural workflow running directly.
+
 ### Demo 2: Root Cause Analysis
 
 "Next, I’ll ask: `Why is CA market success dropping?`
 
 Here the agent switches into root-cause mode. It checks the market success trend, identifies organizations in California with the highest issue rates, reviews stage anomalies, and generates a likely explanation. The root-cause panel highlights the market, the size of the drop, the most impacted organization, the likely pipeline stage, and a plain-English explanation."
+
+Then call `GET /analytics/pipeline-report?state=CA` and highlight `cross_table_correlation` to prove same-state and same-month market/pipeline linkage.
 
 ### Demo 3: Visual Analytics
 
@@ -28,6 +32,22 @@ The pipeline health chart shows which stages are healthy versus degraded.
 The market success trend shows how market performance changes over time.
 The retry effectiveness chart shows whether retries are actually recovering throughput.
 Together, these visuals turn raw operational data into fast, decision-ready insight."
+
+### Demo 4: Memory Reliability
+
+"Now I’ll call `GET /memory/status`.
+
+This shows whether episodic memory is using Firebase or local JSON fallback. If Firebase is unavailable, investigations still persist locally so sessions remain resilient instead of failing silently."
+
+### Demo 5: Purposeful Web Search Uses
+
+Use 3 targeted questions:
+
+1. `What recent CMS updates could explain Medicaid rejection spikes in VA?`
+2. `What does Complete Validation Failure usually indicate in provider roster compliance?`
+3. `What policy changes could affect Medicaid FFS roster submissions in KS?`
+
+"For each query, show returned sources and explain how external context is incorporated into recommendations."
 
 ## Conclusion - 30 Seconds
 

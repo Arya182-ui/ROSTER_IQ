@@ -148,6 +148,9 @@ def _prepare_roster_dataframe(df: pd.DataFrame) -> pd.DataFrame:
         "DART_REVIEW_DURATION",
         "DART_UI_VALIDATION_DURATION",
         "SPS_LOAD_DURATION",
+        "AVG_PRE_PROCESSING_DURATION",
+        "AVG_MAPPING_APROVAL_DURATION",
+        "AVG_DART_REVIEW_DURATION",
         "AVG_DART_GENERATION_DURATION",
         "AVG_DART_UI_VLDTN_DURATION",
         "AVG_SPS_LOAD_DURATION",
@@ -500,18 +503,24 @@ def get_stage_duration_anomalies(
     """Identify roster operations whose stage durations exceed historical baselines."""
 
     roster_df = _resolve_roster_df(roster_df)
-    stage_pairs: Dict[str, tuple[str, str]] = {
-        "ISF_GEN": ("ISF_GEN_DURATION", "AVG_ISF_GENERATION_DURATION"),
-        "DART_GEN": ("DART_GEN_DURATION", "AVG_DART_GENERATION_DURATION"),
-        "DART_UI_VALIDATION": ("DART_UI_VALIDATION_DURATION", "AVG_DART_UI_VLDTN_DURATION"),
-        "SPS_LOAD": ("SPS_LOAD_DURATION", "AVG_SPS_LOAD_DURATION"),
+    stage_pairs: Dict[str, tuple[str, list[str]]] = {
+        "PRE_PROCESSING": ("PRE_PROCESSING_DURATION", ["AVG_PRE_PROCESSING_DURATION"]),
+        "MAPPING_APROVAL": ("MAPPING_APROVAL_DURATION", ["AVG_MAPPING_APROVAL_DURATION"]),
+        "ISF_GEN": ("ISF_GEN_DURATION", ["AVG_ISF_GENERATION_DURATION"]),
+        "DART_GEN": ("DART_GEN_DURATION", ["AVG_DART_GENERATION_DURATION"]),
+        "DART_REVIEW": ("DART_REVIEW_DURATION", ["AVG_DART_REVIEW_DURATION"]),
+        "DART_UI_VALIDATION": ("DART_UI_VALIDATION_DURATION", ["AVG_DART_UI_VLDTN_DURATION"]),
+        "SPS_LOAD": ("SPS_LOAD_DURATION", ["AVG_SPS_LOAD_DURATION"]),
     }
 
-    available_pairs = {
-        stage: pair
-        for stage, pair in stage_pairs.items()
-        if pair[0] in roster_df.columns and pair[1] in roster_df.columns
-    }
+    available_pairs: Dict[str, tuple[str, str]] = {}
+    for stage_name, (duration_column, average_candidates) in stage_pairs.items():
+        if duration_column not in roster_df.columns:
+            continue
+        average_column = next((candidate for candidate in average_candidates if candidate in roster_df.columns), None)
+        if average_column:
+            available_pairs[stage_name] = (duration_column, average_column)
+
     if not available_pairs:
         return pd.DataFrame(
             columns=[

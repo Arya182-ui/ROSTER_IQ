@@ -14,11 +14,15 @@ from backend.data_engine.data_engine import (
     get_stage_duration_anomalies,
     get_stuck_ros,
 )
+from backend.procedures.market_health_report import market_health_report
 
 
 STAGE_HEALTH_MAP = {
+    "PRE_PROCESSING": "PRE_PROCESSING_HEALTH",
+    "MAPPING_APROVAL": "MAPPING_APROVAL_HEALTH",
     "ISF_GEN": "ISF_GEN_HEALTH",
     "DART_GEN": "DART_GEN_HEALTH",
+    "DART_REVIEW": "DART_REVIEW_HEALTH",
     "DART_UI_VALIDATION": "DART_UI_VALIDATION_HEALTH",
     "SPS_LOAD": "SPS_LOAD_HEALTH",
 }
@@ -214,6 +218,7 @@ def generate_pipeline_health_report(
     anomalies_df = get_stage_duration_anomalies(roster_df)
     retry_summary = _retry_effectiveness(roster_df)
     top_problem_orgs = _top_problem_orgs(roster_df)
+    cross_table = market_health_report(state=state)
 
     issue_source = anomalies_df.copy()
     if not issue_source.empty:
@@ -244,6 +249,10 @@ def generate_pipeline_health_report(
         },
         "pipeline_issues": pipeline_issues,
         "market_context": _market_context(state=state, market_df=market_df),
+        "cross_table_correlation": {
+            "summary": cross_table.get("summary", {}),
+            "top_rows": cross_table.get("items", [])[:5],
+        },
         "retry_effectiveness": retry_summary,
         "top_problem_orgs": top_problem_orgs,
         "recommended_actions": _recommended_actions(

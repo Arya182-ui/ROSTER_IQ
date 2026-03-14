@@ -20,6 +20,7 @@ from backend.memory.firebase_memory import (
     save_query,
 )
 from backend.memory.semantic_loader import load_semantic_memory
+from backend.procedures.registry import run_procedure, select_procedure_for_query
 from backend.tools.web_search_tool import needs_search_context, search_context
 
 
@@ -575,6 +576,14 @@ def _execute_tool(query: str) -> tuple[str, dict[str, Any]]:
             "query": tool_result.get("query", query),
         }
 
+    procedure_name = select_procedure_for_query(query)
+    if procedure_name:
+        state = _extract_state(query)
+        kwargs: dict[str, Any] = {}
+        if procedure_name != "triage_stuck_ros" and state:
+            kwargs["state"] = state
+        return procedure_name, run_procedure(procedure_name, **kwargs)
+
     tool_name = decide_tool(query)
     tool_callable = TOOL_REGISTRY[tool_name]
     return tool_name, tool_callable()
@@ -626,6 +635,23 @@ def _summarize_tool_result(
             {
                 "context_summary": tool_result.get("context_summary"),
                 "source_count": len(tool_result.get("sources", [])),
+            }
+        )
+        return summary
+
+    if tool_name in {
+        "triage_stuck_ros",
+        "market_health_report",
+        "retry_effectiveness_analysis",
+        "quality_drift_watch",
+    }:
+        procedure_summary = tool_result.get("procedure_summary", {})
+        summary.update(
+            {
+                "state": procedure_summary.get("state", state),
+                "procedure": tool_name,
+                "procedure_count": tool_result.get("count", 0),
+                "procedure_latest_month": procedure_summary.get("latest_month"),
             }
         )
         return summary

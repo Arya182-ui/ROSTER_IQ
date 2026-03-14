@@ -28,6 +28,8 @@ from backend.data_engine.data_engine import (
     get_stuck_ros,
 )
 from backend.memory.firebase_memory import get_recent_investigations
+from backend.memory.firebase_memory import get_memory_backend_status
+from backend.procedures.registry import PROCEDURE_REGISTRY, run_procedure
 
 router = APIRouter()
 
@@ -36,6 +38,12 @@ class AskRequest(BaseModel):
     """Request body for natural-language agent queries."""
 
     query: str
+
+
+class ProcedureRunRequest(BaseModel):
+    """Request body for running a named diagnostic procedure."""
+
+    state: str | None = None
 
 
 def _dataframe_payload(df: pd.DataFrame) -> dict[str, Any]:
@@ -157,6 +165,39 @@ def read_investigation_history(limit: int = Query(default=12, ge=1, le=50)) -> d
         return {"items": get_recent_investigations(limit=limit)}
     except Exception:
         return {"items": []}
+
+
+@router.get("/memory/status")
+def read_memory_status() -> dict[str, Any]:
+    """Return active memory backend health and fallback status."""
+
+    return get_memory_backend_status()
+
+
+@router.get("/procedures")
+def read_procedures() -> dict[str, Any]:
+    """Return the available named diagnostic procedures."""
+
+    names = sorted(PROCEDURE_REGISTRY.keys())
+    return {"count": len(names), "items": names}
+
+
+@router.post("/procedures/{name}/run")
+def run_named_procedure(name: str, request: ProcedureRunRequest) -> dict[str, Any]:
+    """Run a named diagnostic procedure for direct demonstration or debugging."""
+
+    if name not in PROCEDURE_REGISTRY:
+        return {
+            "tool_name": name,
+            "count": 0,
+            "data": [],
+            "error": "Unknown procedure",
+        }
+
+    kwargs: dict[str, Any] = {}
+    if request.state and name != "triage_stuck_ros":
+        kwargs["state"] = request.state.upper()
+    return run_procedure(name=name, **kwargs)
 
 
 @router.post("/ask")

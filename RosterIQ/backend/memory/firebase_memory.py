@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import json
 import os
 import re
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 from backend.data_engine.data_engine import get_failed_ros, get_stuck_ros
 
@@ -15,6 +18,63 @@ INVESTIGATION_COLLECTION_NAME = "rosteriq_investigations"
 TOKEN_URI = "https://oauth2.googleapis.com/token"
 AUTH_URI = "https://accounts.google.com/o/oauth2/auth"
 AUTH_PROVIDER_CERT_URL = "https://www.googleapis.com/oauth2/v1/certs"
+LOCAL_MEMORY_PATH = Path(__file__).resolve().parent / "episodic_memory_local.json"
+
+
+def _now_iso() -> str:
+    """Return an ISO timestamp for local-memory records."""
+
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _read_local_memory() -> dict[str, list[dict[str, Any]]]:
+    """Load local episodic memory from disk when Firestore is unavailable."""
+
+    if not LOCAL_MEMORY_PATH.exists():
+        return {"queries": [], "investigations": []}
+
+    try:
+        payload = json.loads(LOCAL_MEMORY_PATH.read_text(encoding="utf-8"))
+        queries = payload.get("queries", []) if isinstance(payload, dict) else []
+        investigations = payload.get("investigations", []) if isinstance(payload, dict) else []
+        return {
+            "queries": queries if isinstance(queries, list) else [],
+            "investigations": investigations if isinstance(investigations, list) else [],
+        }
+    except Exception:
+        return {"queries": [], "investigations": []}
+
+
+def _write_local_memory(payload: dict[str, list[dict[str, Any]]]) -> None:
+    """Persist local episodic memory payload safely."""
+
+    LOCAL_MEMORY_PATH.write_text(json.dumps(payload, ensure_ascii=True, indent=2), encoding="utf-8")
+
+
+def _firebase_enabled() -> bool:
+    """Return whether Firebase credentials are present and usable."""
+
+    required = [
+        os.getenv("FIREBASE_PROJECT_ID"),
+        os.getenv("FIREBASE_CLIENT_EMAIL"),
+        os.getenv("FIREBASE_PRIVATE_KEY"),
+    ]
+    return all(required)
+
+
+def _sort_recent(records: list[dict[str, Any]], limit: int) -> list[dict[str, Any]]:
+    """Sort records by created timestamp descending with defensive parsing."""
+
+    def _sort_key(record: dict[str, Any]) -> str:
+        value = record.get("created_at")
+        if isinstance(value, str):
+            return value
+        if hasattr(value, "isoformat"):
+            return value.isoformat()
+        return ""
+
+    ranked = sorted(records, key=_sort_key, reverse=True)
+    return ranked[:limit]
 
 
 def _firebase_modules():
@@ -115,20 +175,28 @@ def _safe_summary_dict(result_summary: Any) -> dict[str, Any]:
 def _recent_investigation_docs(limit: int = 50) -> list[dict[str, Any]]:
     """Return recent investigation records ordered by creation time."""
 
-    _, _, firestore = _firebase_modules()
-    stream = (
-        _get_client()
-        .collection(INVESTIGATION_COLLECTION_NAME)
-        .order_by("created_at", direction=firestore.Query.DESCENDING)
-        .limit(limit)
-        .stream()
-    )
-    records: list[dict[str, Any]] = []
-    for doc in stream:
-        payload = doc.to_dict() or {}
-        payload["id"] = doc.id
-        records.append(payload)
-    return records
+    if _firebase_enabled():
+        try:
+            _, _, firestore = _firebase_modules()
+            stream = (
+                _get_client()
+                .collection(INVESTIGATION_COLLECTION_NAME)
+                .order_by("created_at", direction=firestore.Query.DESCENDING)
+                .limit(limit)
+                .stream()
+            )
+            records: list[dict[str, Any]] = []
+            for doc in stream:
+                payload = doc.to_dict() or {}
+                payload["id"] = doc.id
+                records.append(payload)
+            return records
+        except Exception:
+            pass
+
+    local_payload = _read_local_memory()
+    investigations = local_payload.get("investigations", [])
+    return _sort_recent(investigations, limit)
 
 
 def save_query(query: str, response: str) -> str:
@@ -139,28 +207,52 @@ def save_query(query: str, response: str) -> str:
         "response": response,
         "created_at": datetime.now(timezone.utc),
     }
-    doc_ref = _get_client().collection(QUERY_COLLECTION_NAME).document()
-    doc_ref.set(document)
-    return doc_ref.id
+    if _firebase_enabled():
+        try:
+            doc_ref = _get_client().collection(QUERY_COLLECTION_NAME).document()
+            doc_ref.set(document)
+            return doc_ref.id
+        except Exception:
+            pass
+
+    payload = _read_local_memory()
+    local_id = str(uuid4())
+    payload["queries"].append(
+        {
+            "id": local_id,
+            "query": query,
+            "response": response,
+            "created_at": _now_iso(),
+        }
+    )
+    _write_local_memory(payload)
+    return local_id
 
 
 def get_recent_queries(limit: int = 10) -> list[dict[str, Any]]:
     """Return the most recent saved query-response pairs from Firestore."""
 
-    _, _, firestore = _firebase_modules()
-    query_stream = (
-        _get_client()
-        .collection(QUERY_COLLECTION_NAME)
-        .order_by("created_at", direction=firestore.Query.DESCENDING)
-        .limit(limit)
-        .stream()
-    )
-    results = []
-    for doc in query_stream:
-        payload = doc.to_dict()
-        payload["id"] = doc.id
-        results.append(payload)
-    return results
+    if _firebase_enabled():
+        try:
+            _, _, firestore = _firebase_modules()
+            query_stream = (
+                _get_client()
+                .collection(QUERY_COLLECTION_NAME)
+                .order_by("created_at", direction=firestore.Query.DESCENDING)
+                .limit(limit)
+                .stream()
+            )
+            results = []
+            for doc in query_stream:
+                payload = doc.to_dict()
+                payload["id"] = doc.id
+                results.append(payload)
+            return results
+        except Exception:
+            pass
+
+    payload = _read_local_memory()
+    return _sort_recent(payload.get("queries", []), limit)
 
 
 def save_investigation(query: str, tool_used: str, result_summary: Any) -> str:
@@ -176,9 +268,29 @@ def save_investigation(query: str, tool_used: str, result_summary: Any) -> str:
         "result_summary": summary,
         "created_at": datetime.now(timezone.utc),
     }
-    doc_ref = _get_client().collection(INVESTIGATION_COLLECTION_NAME).document()
-    doc_ref.set(document)
-    return doc_ref.id
+    if _firebase_enabled():
+        try:
+            doc_ref = _get_client().collection(INVESTIGATION_COLLECTION_NAME).document()
+            doc_ref.set(document)
+            return doc_ref.id
+        except Exception:
+            pass
+
+    payload = _read_local_memory()
+    local_id = str(uuid4())
+    payload["investigations"].append(
+        {
+            "id": local_id,
+            "query": query,
+            "query_type": tool_used,
+            "tool_used": tool_used,
+            "state": state,
+            "result_summary": summary,
+            "created_at": _now_iso(),
+        }
+    )
+    _write_local_memory(payload)
+    return local_id
 
 
 def get_recent_investigations(limit: int = 10) -> list[dict[str, Any]]:
@@ -243,4 +355,34 @@ def compare_state_changes(state: str) -> dict[str, Any]:
         "previous_failed_ros": previous_failed_ros,
         "current_failed_ros": current_failed_ros,
         "change": change,
+    }
+
+
+def get_memory_backend_status() -> dict[str, Any]:
+    """Return active episodic-memory backend health for observability."""
+
+    firebase_configured = _firebase_enabled()
+    firebase_available = False
+    if firebase_configured:
+        try:
+            _get_client()
+            firebase_available = True
+        except Exception:
+            firebase_available = False
+
+    if firebase_available:
+        active_backend = "firebase"
+    else:
+        active_backend = "local_json"
+
+    local_memory_exists = LOCAL_MEMORY_PATH.exists()
+    local_entries = _read_local_memory()
+    return {
+        "active_backend": active_backend,
+        "firebase_configured": firebase_configured,
+        "firebase_available": firebase_available,
+        "local_memory_path": str(LOCAL_MEMORY_PATH),
+        "local_memory_exists": local_memory_exists,
+        "local_query_count": len(local_entries.get("queries", [])),
+        "local_investigation_count": len(local_entries.get("investigations", [])),
     }
