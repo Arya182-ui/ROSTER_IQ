@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-
 import MainLayout from "./layout/MainLayout";
 import DashboardPage from "./pages/DashboardPage";
 import InvestigationsPage from "./pages/InvestigationsPage";
+import AgentChatPage from "./pages/AgentChatPage";
 
 const ROUTE_META = {
   "/dashboard": {
@@ -12,13 +13,13 @@ const ROUTE_META = {
   },
   "/investigations": {
     view: "investigations",
-    title: "Investigation History",
-    subtitle: "Recent investigations, saved outcomes, and quick reruns for follow-up analysis."
+    title: "Investigation Library",
+    subtitle: "Saved investigation outcomes, operational context, and one-click reruns back into chat."
   },
   "/chat": {
     view: "chat",
-    title: "Agent Chat",
-    subtitle: "Ask RosterIQ for triage guidance, market context, and root-cause analysis."
+    title: "AI Triage Copilot",
+    subtitle: "Ask in plain language. RosterIQ routes the request, summarizes the answer, and keeps the workflow moving."
   }
 };
 
@@ -36,25 +37,21 @@ export default function App() {
   }
 
   return (
-    <MainLayout
-      activeView={meta.view}
-      title={meta.title}
-      subtitle={meta.subtitle}
-    >
+    <MainLayout activeView={meta.view} title={meta.title} subtitle={meta.subtitle}>
       <Routes>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<DashboardPage onOpenChat={() => navigate("/chat")} />} />
         <Route
           path="/investigations"
-          element={<InvestigationsPage mode="investigations" onRerun={handleRerun} />}
+          element={<InvestigationsPage onOpenChat={() => navigate("/chat")} onRerun={handleRerun} />}
         />
         <Route
           path="/chat"
           element={
-            <InvestigationsPage
-              mode="chat"
+            <AgentChatPage
               queuedQuery={queuedQuery}
               onQueuedQueryConsumed={() => setQueuedQuery("")}
+              onOpenInvestigations={() => navigate("/investigations")}
             />
           }
         />

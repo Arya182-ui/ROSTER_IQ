@@ -1,25 +1,37 @@
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  html {
+    color-scheme: dark;
+  }
+
   body {
     @apply bg-slate-950 text-slate-200 antialiased;
     background-image:
-      radial-gradient(circle at top left, rgba(34, 211, 238, 0.08), transparent 30%),
-      radial-gradient(circle at top right, rgba(99, 102, 241, 0.08), transparent 30%),
-      linear-gradient(180deg, #020617 0%, #0f172a 100%);
+      radial-gradient(circle at top left, rgba(34, 211, 238, 0.14), transparent 26%),
+      radial-gradient(circle at 85% 0%, rgba(251, 191, 36, 0.12), transparent 22%),
+      radial-gradient(circle at 50% 100%, rgba(20, 184, 166, 0.1), transparent 28%),
+      linear-gradient(180deg, #030712 0%, #091122 42%, #050b16 100%);
     min-height: 100vh;
   }
 
   #root {
     min-height: 100vh;
   }
+
+  ::selection {
+    background: rgba(45, 212, 191, 0.28);
+    color: #f8fafc;
+  }
 }
 
 @layer components {
   .panel-shell {
-    @apply rounded-3xl border border-white/10 bg-slate-900/40 backdrop-blur-xl shadow-2xl;
+    @apply rounded-[30px] border border-white/10 bg-slate-900/55 backdrop-blur-xl shadow-2xl shadow-slate-950/30;
   }
 
   .panel-title {
@@ -27,28 +39,30 @@
   }
 
   .panel-subtitle {
-    @apply text-sm leading-relaxed text-slate-400;
+    @apply text-sm leading-7 text-slate-400;
   }
 
   .status-pill {
-    @apply inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 text-[11px] font-medium uppercase tracking-wider text-slate-300;
+    @apply inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-slate-300;
   }
 
   .section-caption {
-    @apply text-xs font-semibold uppercase tracking-widest text-slate-500;
+    @apply text-xs font-semibold uppercase tracking-[0.22em] text-slate-500;
   }
 
   .metric-card {
-    @apply rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4 backdrop-blur-sm;
+    @apply rounded-3xl border border-white/10 bg-white/[0.03] px-5 py-4 backdrop-blur-sm;
   }
 
   .custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
+    width: 8px;
   }
+
   .custom-scrollbar::-webkit-scrollbar-track {
     background: transparent;
   }
+
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-slate-700/50 rounded-full hover:bg-slate-600;
+    @apply rounded-full bg-slate-700/60 hover:bg-slate-600;
   }
 }

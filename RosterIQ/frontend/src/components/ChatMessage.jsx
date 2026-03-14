@@ -1,45 +1,68 @@
 import React from "react";
 
+function renderParagraphs(content) {
+  return content
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean)
+    .map((paragraph, index) => (
+      <p key={`${paragraph.slice(0, 24)}-${index}`} className="text-sm leading-7 text-current">
+        {paragraph}
+      </p>
+    ));
+}
+
 function AgentTrace({ toolUsed }) {
   const tools = Array.isArray(toolUsed) ? toolUsed : toolUsed ? [toolUsed] : [];
-  if (tools.length === 0) {
+  const visibleTools = tools.filter((tool) => tool && tool !== "conversation");
+
+  if (visibleTools.length === 0) {
     return null;
   }
 
   return (
-    <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/50 p-3">
-      <div className="text-xs uppercase tracking-[0.18em] text-slate-500">Agent used</div>
-      <ul className="mt-2 space-y-1 text-sm text-slate-200">
-        {tools.map((tool) => (
-          <li key={tool}>• {tool}</li>
-        ))}
-      </ul>
+    <div className="mt-4 flex flex-wrap gap-2">
+      {visibleTools.map((tool) => (
+        <span key={tool} className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-cyan-200">
+          {tool.replaceAll("_", " ")}
+        </span>
+      ))}
     </div>
   );
 }
 
-function DataSummary({ message }) {
+function SummaryChips({ message }) {
   if (message.role !== "assistant") {
     return null;
   }
 
+  const chips = [];
   const reportSummary = message.report?.summary;
+
+  if (typeof message.count === "number" && message.count > 0) {
+    chips.push(`Records: ${message.count}`);
+  }
+
+  if (reportSummary) {
+    chips.push(`${reportSummary.state || "ALL"} report`);
+    chips.push(`${reportSummary.stuck_ros || 0} stuck / ${reportSummary.failed_ros || 0} failed`);
+  }
+
+  if (message.stateChange?.change && message.stateChange.change !== "no_history") {
+    chips.push(`Trend: ${message.stateChange.change}`);
+  }
+
+  if (!chips.length) {
+    return null;
+  }
+
   return (
-    <div className="mt-4 grid gap-3 md:grid-cols-2">
-      {typeof message.count === "number" ? (
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-sm text-slate-300">
-          <div className="text-xs uppercase tracking-[0.18em] text-slate-500">Data summary</div>
-          <div className="mt-2">Returned records: {message.count}</div>
-        </div>
-      ) : null}
-      {reportSummary ? (
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-sm text-slate-300">
-          <div className="text-xs uppercase tracking-[0.18em] text-slate-500">Report scope</div>
-          <div className="mt-2">
-            {reportSummary.state}: {reportSummary.failed_ros} failed / {reportSummary.stuck_ros} stuck
-          </div>
-        </div>
-      ) : null}
+    <div className="mt-4 flex flex-wrap gap-2">
+      {chips.map((chip) => (
+        <span key={chip} className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-xs text-slate-300">
+          {chip}
+        </span>
+      ))}
     </div>
   );
 }
@@ -50,24 +73,22 @@ export default function ChatMessage({ message }) {
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
       <div
-        className={`max-w-3xl rounded-3xl border px-5 py-4 shadow-lg ${
+        className={`rounded-[28px] border px-5 py-4 shadow-xl ${
           isUser
-            ? "border-teal-400/20 bg-gradient-to-br from-teal-500 to-cyan-500 text-slate-950"
-            : "border-white/10 bg-slate-900/80 text-slate-100"
+            ? "max-w-md border-cyan-300/20 bg-gradient-to-br from-cyan-400 to-teal-400 text-slate-950"
+            : "max-w-4xl border-white/10 bg-slate-900/88 text-slate-100"
         }`}
       >
-        <div className="text-xs uppercase tracking-[0.18em] opacity-70">
-          {isUser ? "You" : "RosterIQ Agent"}
-        </div>
-        <div className="mt-3 whitespace-pre-wrap text-sm leading-7">{message.content}</div>
-        <DataSummary message={message} />
+        <div className="text-[11px] uppercase tracking-[0.22em] opacity-70">{isUser ? "You" : "RosterIQ"}</div>
+        <div className="mt-3 space-y-4 whitespace-pre-wrap">{renderParagraphs(message.content)}</div>
+        {!isUser ? <SummaryChips message={message} /> : null}
         {!isUser ? <AgentTrace toolUsed={message.toolUsed} /> : null}
         {!isUser && message.sources?.length ? (
-          <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/50 p-3">
+          <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/70 p-4">
             <div className="text-xs uppercase tracking-[0.18em] text-slate-500">Sources</div>
-            <div className="mt-2 space-y-1 text-sm text-slate-300">
+            <div className="mt-3 space-y-2 text-sm text-slate-300">
               {message.sources.map((source) => (
-                <a key={source.url} href={source.url} target="_blank" rel="noreferrer" className="block truncate text-teal-300 hover:text-teal-200">
+                <a key={source.url} href={source.url} target="_blank" rel="noreferrer" className="block truncate text-cyan-300 transition hover:text-cyan-200">
                   {source.title || source.url}
                 </a>
               ))}
