@@ -59,6 +59,13 @@ function dashboardReducer(state, action) {
   }
 }
 
+function truncateText(text, maxLength = 78) {
+  if (!text) {
+    return "";
+  }
+  return text.length > maxLength ? `${text.slice(0, maxLength - 1)}...` : text;
+}
+
 function SkeletonBlock({ className = "" }) {
   return <div className={`animate-pulse rounded-2xl border border-white/10 bg-white/[0.04] ${className}`} aria-hidden="true" />;
 }
@@ -266,6 +273,43 @@ export default function DashboardPage({ onOpenChat }) {
     [data.failedRos, focusState]
   );
 
+  const focusInsightCards = useMemo(() => {
+    const summary = focusedData.pipelineReport.summary || {};
+    const recommendedActions = focusedData.pipelineReport.recommended_actions || [];
+    const confidenceScore = Math.round((focusedData.rootCause.confidence_score || 0) * 100);
+
+    return [
+      {
+        label: "Focus Market",
+        value: focusedData.rootCause.market || focusState,
+        note: `${summary.total_ros ?? 0} total roster ops in scope`,
+        shell: "border-cyan-400/20 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.14),transparent_44%),linear-gradient(180deg,rgba(15,23,42,0.92),rgba(8,15,30,0.92))]",
+        tone: "text-cyan-200"
+      },
+      {
+        label: "Confidence",
+        value: `${confidenceScore}%`,
+        note: focusedData.rootCause.likely_stage_issue || "Watching for the most likely stage issue",
+        shell: "border-emerald-400/20 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.14),transparent_42%),linear-gradient(180deg,rgba(15,23,42,0.92),rgba(8,15,30,0.92))]",
+        tone: "text-emerald-200"
+      },
+      {
+        label: "Primary Organization",
+        value: focusedData.rootCause.primary_org || "No cluster yet",
+        note: `${summary.failed_ros ?? scopedFailedRos.length} failed roster ops currently in view`,
+        shell: "border-amber-400/20 bg-[radial-gradient(circle_at_top_right,rgba(251,191,36,0.14),transparent_42%),linear-gradient(180deg,rgba(15,23,42,0.92),rgba(8,15,30,0.92))]",
+        tone: "text-amber-100"
+      },
+      {
+        label: "Recommended Actions",
+        value: `${recommendedActions.length}`,
+        note: truncateText(recommendedActions[0] || `${summary.stuck_ros ?? data.stuckRos.length} stuck roster ops need follow-up`),
+        shell: "border-fuchsia-400/20 bg-[radial-gradient(circle_at_top_right,rgba(244,114,182,0.14),transparent_42%),linear-gradient(180deg,rgba(15,23,42,0.92),rgba(8,15,30,0.92))]",
+        tone: "text-fuchsia-100"
+      }
+    ];
+  }, [data.stuckRos.length, focusState, focusedData.pipelineReport, focusedData.rootCause, scopedFailedRos.length]);
+
   if (loading) {
     return <DashboardSkeleton />;
   }
@@ -290,11 +334,11 @@ export default function DashboardPage({ onOpenChat }) {
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
               <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-                <div className="text-xs uppercase tracking-[0.18em] text-slate-500 mb-2">Focus state</div>
+                <div className="mb-2 text-xs uppercase tracking-[0.18em] text-slate-500">Focus state</div>
                 <select
                   value={focusState}
                   onChange={(e) => dispatch({ type: "SET_FOCUS", payload: e.target.value })}
-                  className="w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white focus:border-teal-500 focus:outline-none appearance-none cursor-pointer hover:bg-slate-800"
+                  className="w-full cursor-pointer appearance-none rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white hover:bg-slate-800 focus:border-teal-500 focus:outline-none"
                 >
                   {stateOptions.map((state) => (
                     <option key={state} value={state}>{state}</option>
@@ -304,7 +348,7 @@ export default function DashboardPage({ onOpenChat }) {
               <button
                 type="button"
                 onClick={onOpenChat}
-                className="rounded-2xl bg-gradient-to-br from-teal-400 to-cyan-500 px-6 py-4 text-sm font-semibold text-slate-950 transition hover:brightness-110 shadow-lg shadow-teal-500/20"
+                className="rounded-2xl bg-gradient-to-br from-teal-400 to-cyan-500 px-6 py-4 text-sm font-semibold text-slate-950 shadow-lg shadow-teal-500/20 transition hover:brightness-110"
               >
                 Ask agent about {focusState}
               </button>
@@ -312,7 +356,7 @@ export default function DashboardPage({ onOpenChat }) {
           </div>
         </div>
 
-        <div className="grid gap-4 grid-cols-2 md:grid-cols-4 xl:grid-cols-2">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4 xl:grid-cols-2">
           <StatCard
             label="API Status"
             value={data.health?.status || "unknown"}
@@ -338,6 +382,16 @@ export default function DashboardPage({ onOpenChat }) {
             tone="text-sky-400"
           />
         </div>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {focusInsightCards.map((card) => (
+          <div key={card.label} className={`panel-shell overflow-hidden p-5 ${card.shell}`}>
+            <div className="section-caption text-slate-400">{card.label}</div>
+            <div className={`mt-4 font-display text-2xl font-semibold tracking-tight ${card.tone}`}>{card.value}</div>
+            <p className="mt-2 text-sm leading-6 text-slate-300">{card.note}</p>
+          </div>
+        ))}
       </section>
 
       <AnalyticsDashboard
