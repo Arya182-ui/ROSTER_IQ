@@ -1,0 +1,6 @@
+.env
+.env.local
+.env.production
+firebase_credentials.json
+node_modules
+__pycache__

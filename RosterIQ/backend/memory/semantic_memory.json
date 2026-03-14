@@ -1,0 +1,20 @@
+﻿{
+  "FAIL_REC_CNT": "Records that fail due to system or processing errors.",
+  "REJ_REC_CNT": "Records rejected due to validation or compliance violations.",
+  "SKIP_REC_CNT": "Records skipped due to deduplication or business rules.",
+  "SCS_REC_CNT": "Records that completed processing successfully.",
+  "TOT_REC_CNT": "Total records contained in a provider roster file.",
+  "SCS_PCT": "Percentage of successfully processed records in a roster file.",
+  "SPS_LOAD": "Final stage where validated records are loaded into the downstream system.",
+  "DART_GENERATION": "Stage where provider data is transformed into DART format for downstream processing.",
+  "DART_REVIEW": "Operational review stage for generated DART output before validation and load.",
+  "DART_UI_VALIDATION": "Validation stage where DART content is checked through UI or automated rules.",
+  "ISF_GENERATION": "Stage where intermediate structured files are produced for transformation and validation.",
+  "MAPPING_APPROVAL": "Stage where submitted source fields are aligned with internal data models.",
+  "PRE_PROCESSING": "Initial ingestion and preparation stage for incoming roster files.",
+  "IS_STUCK": "Flag indicating a roster operation is stalled in a pipeline stage.",
+  "IS_FAILED": "Flag indicating a roster operation has failed and did not complete successfully.",
+  "FAILURE_STATUS": "Free-text status describing why a roster operation failed or stalled.",
+  "AVG_DART_GENERATION_DURATION": "Historical baseline for DART generation duration used to detect anomalies.",
+  "AVG_SPS_LOAD_DURATION": "Historical baseline for final SPS load duration used in health scoring."
+}

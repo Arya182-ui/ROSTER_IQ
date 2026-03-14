@@ -1,0 +1,12 @@
+﻿fastapi
+uvicorn
+pandas
+numpy
+duckdb
+plotly
+openai
+firebase-admin
+python-dotenv
+tavily-python
+gunicorn
+uvicorn

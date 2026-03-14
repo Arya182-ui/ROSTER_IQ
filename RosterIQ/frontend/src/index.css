@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-950 text-slate-200 antialiased;
+    background-image:
+      radial-gradient(circle at top left, rgba(34, 211, 238, 0.08), transparent 30%),
+      radial-gradient(circle at top right, rgba(99, 102, 241, 0.08), transparent 30%),
+      linear-gradient(180deg, #020617 0%, #0f172a 100%);
+    min-height: 100vh;
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+}
+
+@layer components {
+  .panel-shell {
+    @apply rounded-3xl border border-white/10 bg-slate-900/40 backdrop-blur-xl shadow-2xl;
+  }
+
+  .panel-title {
+    @apply font-display text-lg font-semibold tracking-tight text-white;
+  }
+
+  .panel-subtitle {
+    @apply text-sm leading-relaxed text-slate-400;
+  }
+
+  .status-pill {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 text-[11px] font-medium uppercase tracking-wider text-slate-300;
+  }
+
+  .section-caption {
+    @apply text-xs font-semibold uppercase tracking-widest text-slate-500;
+  }
+
+  .metric-card {
+    @apply rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4 backdrop-blur-sm;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-slate-700/50 rounded-full hover:bg-slate-600;
+  }
+}
